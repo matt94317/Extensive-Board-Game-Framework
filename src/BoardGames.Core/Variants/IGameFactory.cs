@@ -6,6 +6,7 @@
 // means adding classes, never editing the engine (Open-Closed Principle).
 using BoardGames.Core.Engine;
 using BoardGames.Core.Model.Pieces;
+using BoardGames.Core.Players.Strategies;
 using BoardGames.Core.Rules;
 
 namespace BoardGames.Core.Variants;
@@ -19,6 +20,9 @@ public interface IGameFactory
     IWinCondition CreateWinCondition();
     IPerspective CreatePerspective();
     IPieceFactory CreatePieceFactory();
+
+    // The variant's Smarter AI; the Dumb AI (RandomMoveStrategy) is shared.
+    IMoveStrategy CreateSmartStrategy();
 
     // Assembles the products above into a ready-to-play game.
     Game CreateGame();
