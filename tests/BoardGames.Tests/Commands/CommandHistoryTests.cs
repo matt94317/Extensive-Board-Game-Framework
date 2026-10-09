@@ -1,5 +1,6 @@
 // Stream 3 self-checks — turn-level undo/redo, independent of which family
 // or variant is being played (CommandHistory itself is variant-agnostic).
+using BoardGames.Core.Commands;
 using BoardGames.Core.Engine;
 using BoardGames.Core.Model;
 using BoardGames.Core.Model.Pieces;
