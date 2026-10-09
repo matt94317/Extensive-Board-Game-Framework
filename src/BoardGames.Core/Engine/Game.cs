@@ -73,10 +73,43 @@ public abstract class Game
         get { return moveLog; }
     }
 
+    // Stream 3 seam: fires every time Play() executes a command, in MoveLog
+    // order. CommandHistory subscribes to fold commands into turn-sized
+    // undo units; nothing about the template method above changes.
+    public event Action<IGameCommand>? CommandExecuted;
+
     // Hook for Stream 3: called straight after a command executes, before
     // the outcome check. CommandHistory records the command (and clears any
     // redo branch) here, without changing the template method itself.
-    protected virtual void OnCommandExecuted(IGameCommand command) { }
+    protected virtual void OnCommandExecuted(IGameCommand command)
+    {
+        CommandExecuted?.Invoke(command);
+    }
+
+    // ---- Stream 3 seam: apply exactly one command, in either direction ----
+    // Mirrors the bookkeeping half of Play() (everything after Execute())
+    // so CommandHistory never duplicates it and Play() itself stays
+    // untouched. CommandHistory alone decides which commands make up one
+    // undoable turn; these two methods apply a single command's worth of
+    // state change each, in order, as that turn is undone or redone.
+    public void ApplyUndo(IGameCommand command)
+    {
+        command.Undo(this);
+        moveLog.RemoveAt(moveLog.Count - 1);
+        TurnCount--;
+        ActiveSide = command.Actor;
+        Result = GameResult.InProgress();
+    }
+
+    public void ApplyRedo(IGameCommand command)
+    {
+        command.Execute(this);
+        moveLog.Add(command);
+        TurnCount++;
+        Result = WinCondition.Evaluate(this);
+        if (Result.State == GameState.InProgress)
+            ActiveSide = PlayerSides.Opponent(ActiveSide);
+    }
 
     // ---- observer (subject) interface ----
     public void Attach(IGameObserver observer)
