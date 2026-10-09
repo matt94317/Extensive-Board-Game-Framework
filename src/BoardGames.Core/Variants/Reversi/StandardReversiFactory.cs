@@ -1,4 +1,5 @@
 // Stream 2 — Standard Reversi: most disks wins.
+using BoardGames.Core.Players.Strategies;
 using BoardGames.Core.Rules;
 using BoardGames.Core.Rules.Reversi;
 
@@ -24,5 +25,10 @@ public class StandardReversiFactory : ReversiFactory
     public override IWinCondition CreateWinCondition()
     {
         return new MostDisksCondition();
+    }
+
+    public override IMoveStrategy CreateSmartStrategy()
+    {
+        return new GreedyFlipStrategy();
     }
 }

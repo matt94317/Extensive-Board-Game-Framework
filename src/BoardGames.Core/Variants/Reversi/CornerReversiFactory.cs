@@ -1,5 +1,6 @@
 // Stream 2 — Corner Reversi: same play as Standard, but the factory swaps in
 // the corner-dominance win condition (3 corners = instant win).
+using BoardGames.Core.Players.Strategies;
 using BoardGames.Core.Rules;
 using BoardGames.Core.Rules.Reversi;
 
@@ -29,5 +30,10 @@ public class CornerReversiFactory : ReversiFactory
     public override IWinCondition CreateWinCondition()
     {
         return new CornerDominanceCondition();
+    }
+
+    public override IMoveStrategy CreateSmartStrategy()
+    {
+        return new CornerReversiStrategy();
     }
 }

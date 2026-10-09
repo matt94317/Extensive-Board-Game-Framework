@@ -1,5 +1,6 @@
 // Stream 2 — Anti-Reversi (misère): same play as Standard, but the factory
 // swaps in the fewest-disks win condition.
+using BoardGames.Core.Players.Strategies;
 using BoardGames.Core.Rules;
 using BoardGames.Core.Rules.Reversi;
 
@@ -25,5 +26,10 @@ public class AntiReversiFactory : ReversiFactory
     public override IWinCondition CreateWinCondition()
     {
         return new FewestDisksCondition();
+    }
+
+    public override IMoveStrategy CreateSmartStrategy()
+    {
+        return new AntiReversiStrategy();
     }
 }

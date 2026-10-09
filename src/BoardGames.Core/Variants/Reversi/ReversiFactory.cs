@@ -1,8 +1,10 @@
 // Stream 2 — shared base of the three Reversi factories. Rules, perspective
 // and pieces are identical across the family and created here once; each
-// leaf factory overrides only its win condition (and the matching help text).
+// leaf factory overrides only its win condition, its Smarter AI and the
+// matching help text.
 using BoardGames.Core.Engine;
 using BoardGames.Core.Model.Pieces;
+using BoardGames.Core.Players.Strategies;
 using BoardGames.Core.Rules;
 using BoardGames.Core.Rules.Reversi;
 
@@ -26,6 +28,8 @@ public abstract class ReversiFactory : IGameFactory
     }
 
     public abstract IWinCondition CreateWinCondition();
+
+    public abstract IMoveStrategy CreateSmartStrategy();
 
     public virtual IPerspective CreatePerspective()
     {

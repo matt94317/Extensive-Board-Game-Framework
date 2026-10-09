@@ -3,6 +3,7 @@
 // overrides only the product that genuinely differs.
 using BoardGames.Core.Engine;
 using BoardGames.Core.Model.Pieces;
+using BoardGames.Core.Players.Strategies;
 using BoardGames.Core.Rules;
 using BoardGames.Core.Rules.Gomoku;
 
@@ -39,6 +40,11 @@ public abstract class GomokuFactory : IGameFactory
     public virtual IPieceFactory CreatePieceFactory()
     {
         return new GomokuPieceFactory();
+    }
+
+    public virtual IMoveStrategy CreateSmartStrategy()
+    {
+        return new GomokuSmartStrategy();
     }
 
     public Game CreateGame()
