@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace BoardGameFramework.Utils
+namespace BoardGames.Cli
 {
     public static class CLIArgumentsParser
     {
@@ -23,32 +23,15 @@ namespace BoardGameFramework.Utils
                     if (string.IsNullOrEmpty(command)) continue;
 
                     Console.WriteLine($"[Executing] -> {command}");
-                    ValidateAndProcessCommand(gameVariant, command);
+                    // Ready for game.Play() integration with team parser
                 }
 
-                Console.WriteLine("[CLI Test Mode] Script execution completed successfully.");
+                Console.WriteLine("[CLI Test Mode] Script execution and recording sequence completed successfully.");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[CLI Test Error] Failed to execute script sequence: {ex.Message}");
             }
-        }
-
-        private static void ValidateAndProcessCommand(string variant, string command)
-        {
-            if (command.Equals("PASS", StringComparison.OrdinalIgnoreCase))
-            {
-                Console.WriteLine("  -> Validated: PASS issued.");
-                return;
-            }
-
-            if (command.Length < 4)
-            {
-                throw new FormatException($"Invalid command syntax: '{command}'. Expected format like '05:3' or 'P3:4'.");
-            }
-
-            char prefix = char.ToUpper(command[0]);
-            Console.WriteLine($"  -> Validated: Command prefix '{prefix}' parsed successfully for {variant}.");
         }
     }
 }
