@@ -1,21 +1,21 @@
-// Stream 4 — the "[row]:[col]" part shared by every move notation in the
-// brief (O5:3, H3:3, P3:4, ...). Only checks the shape and that both parts
-// are numbers; whether the cell is on the board is the rules' job, so the
-// player gets the variant's own "outside the 8x8 board" message.
+// Stream 4 - reads the "[row]:[col]" part that every move command shares
+// (O5:3, H3:3, E3:3, P3:4). Only the format is checked here; whether the cell
+// is on the board is checked by the variant's rules.
 using BoardGames.Core.Engine;
 using BoardGames.Core.Model;
 
-namespace BoardGames.Cli.Parsing;
-
-internal static class CellParser
+namespace BoardGames.Cli.Parsing
 {
-    public static Position Parse(string cellText, string token, string syntaxHint)
+    public static class CellParser
     {
-        string[] parts = cellText.Split(':');
-        if (parts.Length != 2
-            || !int.TryParse(parts[0].Trim(), out int row)
-            || !int.TryParse(parts[1].Trim(), out int col))
-            throw new InvalidMoveException("'" + token + "' is not a valid move. " + syntaxHint);
-        return new Position(row, col);
+        public static Position ParseCell(string cellText, string originalText)
+        {
+            string[] parts = cellText.Split(':');
+            int row;
+            int col;
+            if (parts.Length != 2 || !int.TryParse(parts[0], out row) || !int.TryParse(parts[1], out col))
+                throw new InvalidMoveException("'" + originalText + "' is not a valid command. Use [row]:[col], e.g. 5:3.");
+            return new Position(row, col);
+        }
     }
 }

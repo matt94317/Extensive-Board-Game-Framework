@@ -1,25 +1,20 @@
-// Stream 4 — Reversi notation: P[r]:[c] places a disk, PASS passes (both
-// case-insensitive). Whether a PASS is actually allowed is checked by
-// ReversiMoveRules, which knows if the player has a legal placement.
+// Stream 4 - Reversi family syntax: P[r]:[c] places a disk, PASS passes the
+// turn. Whether a PASS is allowed is checked by ReversiMoveRules.
 using BoardGames.Core.Engine;
 using BoardGames.Core.Model;
 
-namespace BoardGames.Cli.Parsing;
-
-public class ReversiMoveParser : IMoveParser
+namespace BoardGames.Cli.Parsing
 {
-    public string SyntaxHint
+    public class ReversiMoveParser : IMoveParser
     {
-        get { return "Use P[row]:[col] or PASS, e.g. P3:4."; }
-    }
-
-    public Move Parse(string token)
-    {
-        string text = token.Trim().ToUpperInvariant();
-        if (text == "PASS")
-            return Move.Pass();
-        if (text.Length < 2 || text[0] != 'P')
-            throw new InvalidMoveException("'" + token + "' is not a valid move. " + SyntaxHint);
-        return new Move(MoveType.Place, CellParser.Parse(text.Substring(1), token, SyntaxHint));
+        public Move Parse(string text)
+        {
+            string command = text.Trim().ToUpper();
+            if (command == "PASS")
+                return Move.Pass();
+            if (command.Length < 2 || command[0] != 'P')
+                throw new InvalidMoveException("'" + text + "' is not a valid move. Use P[r]:[c] or PASS.");
+            return new Move(MoveType.Place, CellParser.ParseCell(command.Substring(1), text));
+        }
     }
 }
