@@ -38,7 +38,7 @@ namespace BoardGames.Cli
         public static IMoveParser CreateParser(IGameFactory factory)
         {
             if (factory.GameKey == "gomoku")
-                return new GomokuMoveParser();
+                return new GomokuMoveParser(factory.VariantKey == "plus");
             return new ReversiMoveParser();
         }
     }
