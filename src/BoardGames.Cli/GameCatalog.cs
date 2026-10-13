@@ -35,7 +35,7 @@ public static class GameCatalog
     private static readonly List<GameEntry> entries = new List<GameEntry>
     {
         new GameEntry(new StandardGomokuFactory(), new GomokuMoveParser()),
-        new GameEntry(new GomokuPlusFactory(), new GomokuMoveParser()),
+        new GameEntry(new GomokuPlusFactory(), new GomokuMoveParser(specialStones: true)),
         new GameEntry(new GomokuFogFactory(), new GomokuMoveParser()),
         new GameEntry(new StandardReversiFactory(), new ReversiMoveParser()),
         new GameEntry(new AntiReversiFactory(), new ReversiMoveParser()),
