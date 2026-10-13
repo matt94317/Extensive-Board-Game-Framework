@@ -2,6 +2,8 @@
 // the automated CLI test mode; with none it shows the main menu: pick one of
 // the six variants (or load a save), pick Human vs Human or Human vs
 // Computer, then play until 'quit' comes back here.
+// In a real terminal the menus are driven with the arrow keys (MenuSelector);
+// with piped input the same menus take typed answers.
 using BoardGames.Core.Persistence;
 using BoardGames.Core.Players;
 using BoardGames.Core.Variants;
@@ -25,8 +27,7 @@ namespace BoardGames.Cli
 
             while (true)
             {
-                ShowMainMenu(variants);
-                string? choice = Prompt("> ");
+                string? choice = ChooseFromMainMenu(variants);
                 if (choice == null)
                     return;   // input closed
 
@@ -59,20 +60,35 @@ namespace BoardGames.Cli
             }
         }
 
-        private static void ShowMainMenu(List<IGameFactory> variants)
+        // Shows the main menu and returns the chosen option's key ("1"-"6",
+        // "L", "H" or "Q"), or whatever was typed when input is piped.
+        private static string? ChooseFromMainMenu(List<IGameFactory> variants)
         {
             Console.WriteLine();
             Console.WriteLine("==========================================");
             Console.WriteLine("  IFN584 Board Game Framework");
             Console.WriteLine("==========================================");
+
+            List<MenuOption> options = new List<MenuOption>();
             for (int i = 0; i < variants.Count; i++)
             {
                 var game = variants[i].CreateGame();
-                Console.WriteLine($"  {i + 1}. {game.VariantName,-18} {game.Board.Size}x{game.Board.Size}");
+                string key = (i + 1).ToString();
+                options.Add(new MenuOption(key, $"{key}. {game.VariantName,-18} {game.Board.Size}x{game.Board.Size}"));
             }
-            Console.WriteLine("  L. Load a saved game");
-            Console.WriteLine("  H. Help");
-            Console.WriteLine("  Q. Quit");
+            options.Add(new MenuOption("L", "L. Load a saved game"));
+            options.Add(new MenuOption("H", "H. Help"));
+            options.Add(new MenuOption("Q", "Q. Quit"));
+
+            if (MenuSelector.IsAvailable)
+            {
+                int? index = MenuSelector.Select(options, false);
+                return options[index ?? 0].Key;
+            }
+
+            foreach (MenuOption option in options)
+                Console.WriteLine("  " + option.Label);
+            return Prompt("> ");
         }
 
         private static GameLoop? StartNewGame(List<IGameFactory> variants, string choice)
@@ -100,9 +116,22 @@ namespace BoardGames.Cli
         }
 
         // Asks a numbered question until it gets a valid answer.
-        // Returns null if the input is closed.
+        // Returns null if the input is closed, or if the player presses
+        // Escape in the arrow-key menu.
         private static int? Choose(string question, params string[] options)
         {
+            if (MenuSelector.IsAvailable)
+            {
+                Console.WriteLine(question);
+                List<MenuOption> items = new List<MenuOption>();
+                for (int i = 0; i < options.Length; i++)
+                    items.Add(new MenuOption((i + 1).ToString(), $"{i + 1}. {options[i]}"));
+                int? index = MenuSelector.Select(items, true);
+                if (index == null)
+                    return null;
+                return index + 1;
+            }
+
             while (true)
             {
                 Console.WriteLine(question);

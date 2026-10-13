@@ -14,7 +14,7 @@ namespace BoardGames.Cli
 {
     public class ConsoleBoardView : IGameObserver
     {
-        public const char EmptyCell = '.';
+        public const char EmptyCell = ' ';
         public const char HiddenCell = '?';
 
         // Picks the right view for a game: FogView when the variant's
@@ -46,22 +46,29 @@ namespace BoardGames.Cli
             Render(game);
         }
 
-        // Draws the grid with rows and columns numbered from 1. Cells the
-        // viewer cannot see are drawn as '?'. PlayerSide.None = the true board.
+        // Draws the board as a boxed grid with rows and columns numbered from
+        // 1. Cells the viewer cannot see are drawn as '?'. PlayerSide.None =
+        // the true board.
         protected void DrawBoard(Game game, PlayerSide viewer)
         {
             int size = game.Board.Size;
-            Console.Write("   ");
+            string header = "    ";
             for (int col = 1; col <= size; col++)
-                Console.Write($"{col,3}");
-            Console.WriteLine();
+                header += $"{col,3} ";
+            Console.WriteLine(header.TrimEnd());
+
+            string border = "    +";
+            for (int col = 1; col <= size; col++)
+                border += "---+";
+            Console.WriteLine(border);
 
             for (int row = 1; row <= size; row++)
             {
-                Console.Write($"{row,3}");
+                Console.Write($"{row,3} |");
                 for (int col = 1; col <= size; col++)
-                    Console.Write("  " + CellSymbol(game, new Position(row, col), viewer));
+                    Console.Write(" " + CellSymbol(game, new Position(row, col), viewer) + " |");
                 Console.WriteLine();
+                Console.WriteLine(border);
             }
         }
 
