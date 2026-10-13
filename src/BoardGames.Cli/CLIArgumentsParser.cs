@@ -1,146 +1,149 @@
-// Stream 4 — the automated CLI test mode (Srikesh's CLIArgumentsParser,
-// moved into the CLI project). The original only checked each command's
-// first letter; it now builds the variant through its factory and plays
-// every command through the real Game.Play() turn algorithm, so each one is
-// validated by that variant's own rules:
+// Stream 4 - the automated CLI test mode (spec 4.5):
 //
-//   dotnet run --project src/BoardGames.Cli -- --game reversi --variant anti "P4:3,P3:3"
+//   dotnet run --project src/BoardGames.Cli -- --game reversi --variant anti "P4:3,P3:3,P3:4"
 //
-// Afterwards it renders the final board and reports the active player, the
-// piece counts and the winner or draw. The first rejected command stops
-// the script, with its reason and a non-zero exit code.
+// The variant is built through its factory, then every command in the
+// comma-separated script is parsed and played through Game.Play(), so each
+// one is validated by that variant's own rules. At the end the final board is
+// rendered and the game status is reported (active player, piece counts,
+// winner or draw). No prompts are shown, so it can run unattended.
 using BoardGames.Cli.Parsing;
 using BoardGames.Core.Engine;
 using BoardGames.Core.Model;
+using BoardGames.Core.Variants;
 
-namespace BoardGames.Cli;
-
-public static class CLIArgumentsParser
+namespace BoardGames.Cli
 {
-    public const int Success = 0;
-    public const int CommandRejected = 1;
-    public const int BadArguments = 2;
-
-    // Entry point for any command-line arguments; returns the exit code.
-    public static int Run(string[] args)
+    public static class CLIArgumentsParser
     {
-        string? gameKey = null;
-        string? variantKey = null;
-        string? script = null;
+        public const int Success = 0;
+        public const int CommandRejected = 1;
+        public const int BadArguments = 2;
 
-        for (int i = 0; i < args.Length; i++)
+        // Reads --game, --variant and the script from the command line and
+        // returns the program's exit code.
+        public static int Run(string[] args)
         {
-            string arg = args[i];
-            if (arg == "--help" || arg == "-h")
+            string? gameKey = null;
+            string? variantKey = null;
+            string? script = null;
+
+            for (int i = 0; i < args.Length; i++)
             {
-                PrintUsage();
-                return Success;
-            }
-            if ((arg == "--game" || arg == "--variant") && i + 1 < args.Length)
-            {
-                if (arg == "--game")
-                    gameKey = args[++i];
+                if (args[i] == "--game" && i + 1 < args.Length)
+                {
+                    gameKey = args[i + 1];
+                    i++;
+                }
+                else if (args[i] == "--variant" && i + 1 < args.Length)
+                {
+                    variantKey = args[i + 1];
+                    i++;
+                }
+                else if (script == null && !args[i].StartsWith("--"))
+                {
+                    script = args[i];
+                }
                 else
-                    variantKey = args[++i];
+                {
+                    Console.WriteLine("[CLI Test Error] Unexpected argument '" + args[i] + "'.");
+                    PrintUsage();
+                    return BadArguments;
+                }
             }
-            else if (script == null && !arg.StartsWith("--"))
-                script = arg;
-            else
-                return Fail("Unexpected argument '" + arg + "'.");
+
+            if (gameKey == null || variantKey == null || script == null)
+            {
+                Console.WriteLine("[CLI Test Error] Test mode needs --game, --variant and a command script.");
+                PrintUsage();
+                return BadArguments;
+            }
+
+            IGameFactory? factory = GameSelector.FindFactory(gameKey, variantKey);
+            if (factory == null)
+            {
+                Console.WriteLine("[CLI Test Error] Unknown game/variant: " + gameKey + " " + variantKey);
+                PrintUsage();
+                return BadArguments;
+            }
+
+            return ExecuteTestScript(factory, script);
         }
 
-        if (gameKey == null || variantKey == null || script == null)
-            return Fail("Test mode needs --game, --variant and a command script.");
-
-        GameEntry? entry = GameCatalog.Find(gameKey, variantKey);
-        if (entry == null)
-            return Fail("Unknown game/variant '" + gameKey + " " + variantKey + "'.");
-
-        return ExecuteTestScript(entry, script);
-    }
-
-    public static int ExecuteTestScript(GameEntry entry, string scriptSequence)
-    {
-        string[] commands = scriptSequence.Split(',',
-            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (commands.Length == 0)
-            return Fail("The command script is empty.");
-
-        Game game = entry.Factory.CreateGame();
-        Console.WriteLine("[CLI Test Mode] " + game.VariantName
-                        + " (" + game.Board.Size + "x" + game.Board.Size + ")");
-        Console.WriteLine("Script: " + scriptSequence);
-
-        for (int step = 1; step <= commands.Length; step++)
+        public static int ExecuteTestScript(IGameFactory factory, string scriptSequence)
         {
-            string command = commands[step - 1];
-            PlayerSide mover = game.ActiveSide;
-            string label = "  " + step.ToString().PadLeft(2) + ". " + command.PadRight(8);
-            try
+            if (string.IsNullOrWhiteSpace(scriptSequence))
             {
-                ValidateAndProcessCommand(game, entry.Parser, command);
+                Console.WriteLine("No command script provided for test mode.");
+                return BadArguments;
             }
-            catch (InvalidMoveException ex)
+
+            Game game = factory.CreateGame();
+            IMoveParser parser = GameSelector.CreateParser(factory);
+            Console.WriteLine($"[CLI Test Mode] Starting execution for variant: {game.VariantName}");
+            Console.WriteLine($"Script: {scriptSequence}");
+
+            string[] commands = scriptSequence.Split(',');
+            int step = 0;
+            foreach (var rawCommand in commands)
             {
-                Console.WriteLine(label + " REJECTED - " + ex.Message);
-                Console.WriteLine("Script stopped at command " + step + "; board before it:");
-                ReportFinalState(game);
-                return CommandRejected;
+                string command = rawCommand.Trim();
+                if (string.IsNullOrEmpty(command)) continue;
+                step++;
+
+                PlayerSide mover = game.ActiveSide;
+                try
+                {
+                    game.Play(parser.Parse(command));
+                    Console.WriteLine($"[Executing] {step,2}. {command,-8} ok  ({PlayerSides.DisplayName(mover)})");
+                }
+                catch (InvalidMoveException ex)
+                {
+                    Console.WriteLine($"[Executing] {step,2}. {command,-8} REJECTED - {ex.Message}");
+                    Console.WriteLine($"[CLI Test Error] Script stopped at command {step}. Board before it:");
+                    ReportFinalState(game);
+                    return CommandRejected;
+                }
             }
-            Console.WriteLine(label + " ok  (" + PlayerSides.DisplayName(mover) + ")");
+
+            Console.WriteLine("[CLI Test Mode] Script execution completed successfully.");
+            ReportFinalState(game);
+            return Success;
         }
 
-        Console.WriteLine();
-        ReportFinalState(game);
-        return Success;
-    }
+        private static void ReportFinalState(Game game)
+        {
+            ConsoleBoardView.CreateFor(game).RenderReport(game);
 
-    // Parses one command in the family's notation and plays it; the parser
-    // rejects bad syntax, the variant's rules reject illegal moves.
-    private static void ValidateAndProcessCommand(Game game, IMoveParser parser, string command)
-    {
-        game.Play(parser.Parse(command));
-    }
+            string activePlayer = "none (game over)";
+            if (game.Result.State == GameState.InProgress)
+                activePlayer = PlayerSides.DisplayName(game.ActiveSide);
 
-    private static void ReportFinalState(Game game)
-    {
-        ConsoleBoardView.For(game, () => game.ActiveSide).RenderReport(game);
+            Console.WriteLine();
+            Console.WriteLine("Active player : " + activePlayer);
+            Console.WriteLine("Piece counts  : "
+                + PlayerSides.DisplayName(PlayerSide.PlayerOne) + " " + game.Board.CountPieces(PlayerSide.PlayerOne) + ", "
+                + PlayerSides.DisplayName(PlayerSide.PlayerTwo) + " " + game.Board.CountPieces(PlayerSide.PlayerTwo));
+            Console.WriteLine("Result        : " + DescribeResult(game.Result));
+        }
 
-        bool inProgress = game.Result.State == GameState.InProgress;
-        Console.WriteLine("Active player : "
-                        + (inProgress ? PlayerSides.DisplayName(game.ActiveSide) : "none (game over)"));
-        Console.WriteLine("Pieces        : "
-                        + PlayerSides.DisplayName(PlayerSide.PlayerOne) + " "
-                        + game.Board.CountPieces(PlayerSide.PlayerOne) + ", "
-                        + PlayerSides.DisplayName(PlayerSide.PlayerTwo) + " "
-                        + game.Board.CountPieces(PlayerSide.PlayerTwo));
-        Console.WriteLine("Result        : " + DescribeResult(game.Result));
-    }
+        public static string DescribeResult(GameResult result)
+        {
+            if (result.State == GameState.Won)
+                return PlayerSides.DisplayName(result.Winner) + " wins";
+            if (result.State == GameState.Draw)
+                return "draw";
+            return "game in progress";
+        }
 
-    private static string DescribeResult(GameResult result)
-    {
-        if (result.State == GameState.Won)
-            return PlayerSides.DisplayName(result.Winner) + " wins";
-        if (result.State == GameState.Draw)
-            return "draw";
-        return "game in progress";
-    }
-
-    private static int Fail(string message)
-    {
-        Console.WriteLine("[CLI Test Error] " + message);
-        PrintUsage();
-        return BadArguments;
-    }
-
-    public static void PrintUsage()
-    {
-        Console.WriteLine("CLI test mode:");
-        Console.WriteLine("  dotnet run --project src/BoardGames.Cli -- --game <game> --variant <variant> \"<cmd>,<cmd>,...\"");
-        Console.WriteLine("  games and variants:");
-        foreach (GameEntry entry in GameCatalog.All)
-            Console.WriteLine("    --game " + entry.Factory.GameKey.PadRight(8)
-                            + " --variant " + entry.Factory.VariantKey.PadRight(9) + " " + entry.Name);
-        Console.WriteLine("  commands: Gomoku O[r]:[c], H[r]:[c], E[r]:[c]   Reversi P[r]:[c], PASS");
+        public static void PrintUsage()
+        {
+            Console.WriteLine("CLI test mode:");
+            Console.WriteLine("  dotnet run --project src/BoardGames.Cli -- --game <game> --variant <variant> \"<cmd>,<cmd>,...\"");
+            Console.WriteLine("  games and variants:");
+            foreach (IGameFactory factory in GameSelector.AllVariants())
+                Console.WriteLine("    --game " + factory.GameKey + " --variant " + factory.VariantKey);
+            Console.WriteLine("  commands: Gomoku O[r]:[c], H[r]:[c], E[r]:[c]   Reversi P[r]:[c], PASS");
+        }
     }
 }

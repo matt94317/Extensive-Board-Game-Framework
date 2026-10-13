@@ -1,47 +1,55 @@
-// Stream 4 — the GomokuFog view (Srikesh's FogView, moved into the CLI
-// project). The original masked a string[,] copy of the board with its own
-// adjacency check; it now asks the variant's IPerspective which cells the
-// viewer may see, so the fog rule lives in exactly one place
-// (FogPerspective) and the view only presents it. The true board is never
-// filtered - only what is drawn.
-//
-// It specialises ConsoleBoardView in two ways: it names whose perspective is
-// on screen, and once the game is over the fog lifts and the true board is
-// shown. In test mode it also prints the true board beside the active
-// player's view, so a script's result can be checked.
+// Stream 4 - the GomokuFog view. It inherits all the drawing from
+// ConsoleBoardView and overrides Render() so the board is drawn through ONE
+// player's eyes: their own stones and the cells next to them are shown, every
+// other cell is '?'. The hiding rule itself lives in FogPerspective (Core);
+// the true board is never changed, only what is printed.
 using BoardGames.Core.Engine;
 using BoardGames.Core.Model;
 
-namespace BoardGames.Cli;
-
-public class FogView : ConsoleBoardView
+namespace BoardGames.Cli
 {
-    public FogView(Func<PlayerSide> viewer) : base(viewer) { }
-
-    public override void Render(Game game)
+    public class FogView : ConsoleBoardView
     {
-        if (game.Result.State != GameState.InProgress)
-        {
-            Console.WriteLine("--- " + game.VariantName + ": game over, the fog lifts (true board) ---");
-            DrawGrid(game, null);
-        }
-        else
-        {
-            Console.WriteLine("--- " + game.VariantName + ": " + PlayerSides.DisplayName(Viewer)
-                            + "'s view ('" + HiddenCell + "' = hidden) ---");
-            DrawGrid(game, Viewer);
-        }
-        Console.WriteLine(game.StatusLine());
-    }
+        // Human vs Computer: always the human's side.
+        // Human vs Human: PlayerSide.None, meaning "whoever is about to move".
+        public PlayerSide FixedViewer { get; set; } = PlayerSide.None;
 
-    public override void RenderReport(Game game)
-    {
-        if (game.Result.State == GameState.InProgress)
+        public override void Render(Game game)
         {
-            Console.WriteLine("--- " + game.VariantName + ": true board (hidden from the players) ---");
-            DrawGrid(game, null);
-            Console.WriteLine();
+            if (game.Result.State != GameState.InProgress)
+            {
+                // Once the game is over the fog lifts.
+                RenderTrueBoard(game);
+            }
+            else
+            {
+                PlayerSide viewer = FixedViewer;
+                if (viewer == PlayerSide.None)
+                    viewer = game.ActiveSide;
+                RenderFogBoard(game, viewer);
+            }
+            Console.WriteLine(game.StatusLine());
         }
-        Render(game);
+
+        public void RenderFogBoard(Game game, PlayerSide viewer)
+        {
+            Console.WriteLine($"\n--- GomokuFog Perspective View: {PlayerSides.DisplayName(viewer)} ('?' = hidden) ---");
+            DrawBoard(game, viewer);
+        }
+
+        public void RenderTrueBoard(Game game)
+        {
+            Console.WriteLine("\n--- GomokuFog True Board (what the players cannot see) ---");
+            DrawBoard(game, PlayerSide.None);
+        }
+
+        // Test mode prints the true board AND the active player's view, so
+        // the result of a script can be checked side by side.
+        public override void RenderReport(Game game)
+        {
+            if (game.Result.State == GameState.InProgress)
+                RenderTrueBoard(game);
+            Render(game);
+        }
     }
 }
