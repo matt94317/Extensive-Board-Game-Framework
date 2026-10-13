@@ -16,7 +16,7 @@ namespace BoardGames.Cli;
 
 public class ConsoleBoardView : IGameObserver
 {
-    public const char EmptyCell = '.';
+    public const char EmptyCell = ' ';
     public const char HiddenCell = '?';
 
     private readonly Func<PlayerSide> viewer;
@@ -63,23 +63,29 @@ public class ConsoleBoardView : IGameObserver
         Render(game);
     }
 
-    // Draws the grid with 1-based row and column numbers. A null viewer
-    // means the true board: nothing is masked.
+    // Draws the board as a boxed grid with 1-based row and column numbers.
+    // A null viewer means the true board: nothing is masked.
     protected void DrawGrid(Game game, PlayerSide? viewer)
     {
         Board board = game.Board;
 
-        string header = "   ";
+        string header = "    ";
         for (int col = 1; col <= board.Size; col++)
-            header += col.ToString().PadLeft(3);
-        Console.WriteLine(header);
+            header += col.ToString().PadLeft(3).PadRight(4);
+        Console.WriteLine(header.TrimEnd());
+
+        string border = "    +";
+        for (int col = 1; col <= board.Size; col++)
+            border += "---+";
+        Console.WriteLine(border);
 
         for (int row = 1; row <= board.Size; row++)
         {
-            string line = row.ToString().PadLeft(3);
+            string line = row.ToString().PadLeft(3) + " |";
             for (int col = 1; col <= board.Size; col++)
-                line += "  " + CellSymbol(game, new Position(row, col), viewer);
+                line += " " + CellSymbol(game, new Position(row, col), viewer) + " |";
             Console.WriteLine(line);
+            Console.WriteLine(border);
         }
     }
 

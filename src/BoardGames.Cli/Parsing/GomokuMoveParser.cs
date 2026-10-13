@@ -3,6 +3,7 @@
 // every Gomoku variant; Standard and Fog then reject them through
 // GomokuMoveRules, so the "special stones exist only in GomokuPlus" message
 // comes from the rules, not from here. PASS is handed on the same way.
+// The syntax hint only advertises H and E for the variant that has them.
 using BoardGames.Core.Engine;
 using BoardGames.Core.Model;
 
@@ -10,9 +11,21 @@ namespace BoardGames.Cli.Parsing;
 
 public class GomokuMoveParser : IMoveParser
 {
+    private readonly bool specialStones;
+
+    public GomokuMoveParser(bool specialStones = false)
+    {
+        this.specialStones = specialStones;
+    }
+
     public string SyntaxHint
     {
-        get { return "Use O[row]:[col], H[row]:[col] or E[row]:[col], e.g. O5:3."; }
+        get
+        {
+            if (specialStones)
+                return "Use O[row]:[col], H[row]:[col] or E[row]:[col], e.g. O5:3.";
+            return "Use O[row]:[col], e.g. O5:3.";
+        }
     }
 
     public Move Parse(string token)

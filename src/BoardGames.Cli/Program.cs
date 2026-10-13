@@ -2,6 +2,8 @@
 // the automated CLI test mode; with none it opens the interactive main
 // menu: pick one of the six variants (or load a save), pick Human vs Human
 // or Human vs Computer and an AI level, then play until 'quit' returns here.
+// In a real terminal every menu is driven with the arrow keys (MenuSelector);
+// with piped input the same menus take typed answers.
 using BoardGames.Core.Persistence;
 using BoardGames.Core.Players;
 
@@ -22,8 +24,7 @@ public static class Program
     {
         while (true)
         {
-            ShowMainMenu();
-            string? choice = Prompt("> ");
+            string? choice = ChooseFromMainMenu();
             if (choice == null)
                 return;   // input closed
 
@@ -57,21 +58,33 @@ public static class Program
         }
     }
 
-    private static void ShowMainMenu()
+    // Shows the main menu and returns the chosen option's key ("1"-"6",
+    // "L", "H" or "Q"), or whatever was typed when input is piped.
+    private static string? ChooseFromMainMenu()
     {
         Console.WriteLine();
         Console.WriteLine("==========================================");
         Console.WriteLine("  IFN584 Board Game Framework");
         Console.WriteLine("==========================================");
+
+        List<MenuOption> options = new List<MenuOption>();
         for (int i = 0; i < GameCatalog.All.Count; i++)
         {
             GameEntry entry = GameCatalog.All[i];
             int size = entry.Factory.CreateGame().Board.Size;
-            Console.WriteLine("  " + (i + 1) + ". " + entry.Name.PadRight(18) + size + "x" + size);
+            string key = (i + 1).ToString();
+            options.Add(new MenuOption(key, key + ". " + entry.Name.PadRight(18) + size + "x" + size));
         }
-        Console.WriteLine("  L. Load a saved game");
-        Console.WriteLine("  H. Help");
-        Console.WriteLine("  Q. Quit");
+        options.Add(new MenuOption("L", "L. Load a saved game"));
+        options.Add(new MenuOption("H", "H. Help"));
+        options.Add(new MenuOption("Q", "Q. Quit"));
+
+        if (MenuSelector.IsAvailable)
+            return options[MenuSelector.Select(options, allowCancel: false)!.Value].Key;
+
+        foreach (MenuOption option in options)
+            Console.WriteLine("  " + option.Label);
+        return Prompt("> ");
     }
 
     private static GameSession? StartNewGame(string choice)
@@ -98,9 +111,20 @@ public static class Program
                                  level == 1 ? AiLevel.Dumb : AiLevel.Smart);
     }
 
-    // Numbered choice; asks again until it gets one. Null if input closes.
+    // Numbered choice; asks again until it gets one. Null if input closes,
+    // or if the player presses Escape in the arrow-key menu.
     private static int? Choose(string question, params string[] options)
     {
+        if (MenuSelector.IsAvailable)
+        {
+            Console.WriteLine(question);
+            List<MenuOption> items = new List<MenuOption>();
+            for (int i = 0; i < options.Length; i++)
+                items.Add(new MenuOption((i + 1).ToString(), (i + 1) + ". " + options[i]));
+            int? index = MenuSelector.Select(items, allowCancel: true);
+            return index == null ? null : index + 1;
+        }
+
         while (true)
         {
             Console.WriteLine(question);
