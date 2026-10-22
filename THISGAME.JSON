@@ -1,0 +1,29 @@
+{
+  "GameKey": "gomoku",
+  "VariantKey": "plus",
+  "Mode": "HumanVsHuman",
+  "PlayerOneAi": null,
+  "PlayerTwoAi": null,
+  "Moves": [
+    {
+      "Type": "Place",
+      "Row": 3,
+      "Column": 3
+    },
+    {
+      "Type": "PlaceHeavy",
+      "Row": 4,
+      "Column": 4
+    },
+    {
+      "Type": "Place",
+      "Row": 5,
+      "Column": 5
+    },
+    {
+      "Type": "Erase",
+      "Row": 3,
+      "Column": 3
+    }
+  ]
+}
